@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="bn">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>NUMBER TO FULL INFO</title>
+<style>
+  :root{
+    --bg:#000;
+    --neon:#ff1f2e;
+    --accent:#ff4a52;
+    --card:#0b0b0b;
+  }
+  /* disable text selection & tap highlight */
+  html,body,*{ -webkit-user-select:none; -moz-user-select:none; -ms-user-select:none; user-select:none; -webkit-tap-highlight-color: transparent; }
+  *{box-sizing:border-box}
+  body{
+    margin:0; min-height:100vh; background:var(--bg); color:#fff;
+    font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+    display:flex; flex-direction:column; align-items:center; -webkit-font-smoothing:antialiased;
+  }
+
+  /* large centered neon header only once */
+  .hero{
+    margin-top:48px;
+    display:flex; align-items:center; justify-content:center;
+    width:100%;
+  }
+  .neon{
+    font-size:40px; font-weight:900; text-transform:uppercase;
+    color:var(--neon); letter-spacing:2px;
+    text-shadow:
+      0 0 10px rgba(255,31,46,0.95),
+      0 0 30px rgba(255,31,46,0.6),
+      0 10px 40px rgba(0,0,0,0.85);
+    text-align:center;
+    padding:12px 20px;
+  }
+
+  /* centered card */
+  .wrap{ width:100%; max-width:760px; padding:0 20px; margin-top:28px; }
+  .card{
+    background: linear-gradient(180deg, rgba(255,0,10,0.02), rgba(0,0,0,0.55));
+    border-radius:14px; padding:28px 20px 26px;
+    border: 1px solid rgba(255,31,46,0.16);
+    box-shadow: 0 18px 50px rgba(0,0,0,0.7);
+    position:relative;
+    overflow:hidden;
+  }
+
+  /* single subtle red bottom line (no double) */
+  .card::after{
+    content:"";
+    position:absolute;
+    left:18px; right:18px; bottom:12px;
+    height:6px; border-radius:6px;
+    background: linear-gradient(90deg, rgba(255,31,46,0.75), rgba(255,31,46,0.25));
+    box-shadow: 0 6px 20px rgba(255,31,46,0.12);
+  }
+
+  .input-wrap{ display:flex; flex-direction:column; gap:16px; align-items:center; z-index:2; position:relative; }
+  input[type="text"]{
+    width:100%; max-width:620px; padding:16px 18px; border-radius:10px;
+    background: rgba(0,0,0,0.55); color:#fff; font-size:16px; text-align:center;
+    border:2px solid rgba(255,31,46,0.36);
+    outline:none;
+    box-shadow:
+      inset 0 2px 10px rgba(255,31,46,0.02);
+  }
+  input[type="text"]::placeholder{ color: rgba(255,255,255,0.42) }
+
+  .btn{
+    width:100%; max-width:620px; padding:16px; border-radius:12px; border:none;
+    font-size:18px; font-weight:800; cursor:pointer; color:#111;
+    background: linear-gradient(180deg, rgba(255,78,86,1), rgba(255,38,46,0.95));
+    box-shadow: 0 16px 36px rgba(255,31,46,0.18);
+    transition: transform .06s ease, box-shadow .12s ease;
+  }
+  .btn:active{ transform: translateY(1px); box-shadow:0 10px 22px rgba(255,31,46,0.14); }
+
+  /* no extra notices */
+  .spacer{ height:6px; }
+
+  /* hide audio controls */
+  audio{ display:none; }
+
+  @media(min-width:900px){
+    .neon{ font-size:56px }
+    .card{ padding:36px 28px 30px; }
+  }
+</style>
+</head>
+<body>
+
+  <!-- only the neon header (single) -->
+  <header class="hero">
+    <div class="neon">NUMBER TO FULL INFO</div>
+  </header>
+
+  <main class="wrap">
+    <section class="card" role="main" aria-label="main card">
+      <div class="input-wrap">
+        <input id="phone" type="text" placeholder="Enter phone number" inputmode="numeric" autocomplete="off" />
+        <button id="check" class="btn" aria-label="Check">Check</button>
+      </div>
+      <div class="spacer"></div>
+    </section>
+  </main>
+
+  <!-- hidden audio -->
+  <audio id="bg" src="sound.mp3" preload="auto" loop crossorigin="anonymous"></audio>
+
+<script>
+/* same silent-play behavior on click; no UI text changes */
+const btn = document.getElementById('check');
+const audio = document.getElementById('bg');
+
+let audioCtx=null, src=null, gain=null;
+function initAudio(){
+  if(audioCtx) return;
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  if(!AudioContext) return;
+  audioCtx = new AudioContext();
+  try{
+    src = audioCtx.createMediaElementSource(audio);
+    gain = audioCtx.createGain();
+    gain.gain.value = 0.0001;
+    src.connect(gain);
+    gain.connect(audioCtx.destination);
+  }catch(e){
+    audioCtx=null; src=null; gain=null;
+  }
+}
+function rampToFull(t=0.45){
+  if(!gain || !audioCtx) return;
+  const now = audioCtx.currentTime;
+  gain.gain.cancelScheduledValues(now);
+  gain.gain.setValueAtTime(Math.max(gain.gain.value,0.0001), now);
+  gain.gain.linearRampToValueAtTime(1.0, now + t);
+}
+async function playNow(){
+  try{
+    initAudio();
+    if(audioCtx && audioCtx.state === 'suspended'){
+      await audioCtx.resume().catch(()=>{});
+    }
+    audio.volume = 1.0;
+    await audio.play();
+    rampToFull(0.45);
+  }catch(e){
+    try{ audio.volume = 1.0; await audio.play(); }catch(err){ console.warn('play failed', err); }
+  }
+}
+btn.addEventListener('click', async ()=>{ await playNow(); });
+window.addEventListener('pagehide', ()=>{ try{ audio.pause(); }catch(e){} });
+</script>
+
+</body>
+</html>
